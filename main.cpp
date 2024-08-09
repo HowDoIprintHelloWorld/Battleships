@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <variant>
@@ -111,22 +112,48 @@ int get_ship_orientation() {
     }
 }
 
-Coordinates* get_orienation_coordinates(Coordinates *base_coordinates, int orientation, int ship_type) {
-    int ship_length = ship_type == 0 ? small_ship_length : big_ship_length;
+Coordinates* get_orienation_coordinates(Coordinates *base_coordinates, int orientation, int ship_length, int field_size) {
     int *xy_coordinate = orientation == 0 ? &base_coordinates->x : &base_coordinates->y;
     Coordinates **coordinates = new Coordinates*[ship_length];
 
     coordinates[0] = base_coordinates;
-    for (int i = 1; i < ship_length; i++) {
-        
+    for (int i = 1; i <= ship_length; i++) {
+        Coordinates *coordinate = new Coordinates;
+        coordinate->x = base_coordinates->x;
+        coordinate->y = base_coordinates->y;
+        if (orientation == 0) {
+            coordinate->y += i;
+        } else {
+            coordinate->x += i;
+        }
+        if (!validate_coordinates(coordinate, field_size)) {
+            throw invalid_argument("Invalid coordinates");
+        }
+        coordinates[i] = coordinate;
     }
+    for (int i = 0; i < ship_length; i++) {
+        print_coordinates(coordinates[i]);
+    }
+    return *coordinates;
 }
 
 void set_ship_coordinates(Ship *ship, Game_field *game_field) {
+    int ship_length = ship->ship_type == 0 ? small_ship_length : big_ship_length;
+    
     while (true) {
-        Coordinates *coordinates = cli_get_coordinates(game_field->field_size);
-        int orientation = get_ship_orientation();
-        return;
+        try {
+            Coordinates *base_coordinates = cli_get_coordinates(game_field->field_size);
+            int orientation = get_ship_orientation();
+            Coordinates *coordinates = get_orienation_coordinates(base_coordinates, orientation, ship_length, game_field->field_size);
+            for (int i = 0; i < ship_length; i++) {
+                ship->coordinates[i] = &coordinates[i];
+                cout << endl << i << " ";
+                print_coordinates(&coordinates[i]);
+            }
+            return;
+        } catch (invalid_argument e) {
+            cout << "[E]    Ship (partially) out of bounds" << endl;
+        }
     }
 }
 
@@ -141,6 +168,7 @@ void set_ships(Game_field *game_field, int ship_type) {
     for (int i = 1; i <= ship_amount; i++) {
         cout << "[I]    Setting ship nr. " << i << endl;
         ships[i-1].ship_type = ship_type;
+        ships[i-1].ship_id = i;
         set_ship_coordinates(&ships[i-1], game_field);        
     }
 }
